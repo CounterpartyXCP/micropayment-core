@@ -1,0 +1,23 @@
+language: python
+python:
+  - "3.3"
+  - "3.4"
+  - "3.5"
+  - "2.7"
+  - "pypy"
+
+install:
+  - pip install -r requirements.txt
+  - pip install -r requirements_tests.txt
+
+script:
+  - pep8 micropayment_core
+  - coverage run --source="micropayment_core" setup.py test
+  - coverage report --fail-under=90
+
+after_success:
+  - coveralls
+
+notifications:
+  slack: storjcommunity:TZfUO9ycY8R9UYwztWZTo0jk
+  email: false

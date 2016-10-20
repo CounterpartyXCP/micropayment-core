@@ -1,0 +1,6 @@
+ipython
+Sphinx
+pudb
+restview
+autopep8
+btctxstore
