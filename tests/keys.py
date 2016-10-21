@@ -1,5 +1,10 @@
+import json
 import unittest
 from micropayment_core import keys
+from micropayment_core import util
+
+
+FIXTURES = json.load(open("tests/fixtures.json"))
 
 
 # openssl ecparam -genkey -name secp256k1 -noout -outform DER -out private.key
@@ -67,6 +72,27 @@ class TestKeys(unittest.TestCase):
     def test_netcode_from_address(self):
         netcode = keys.netcode_from_address(ADDRESS)
         self.assertEqual(netcode, NETCODE)
+
+
+class TestAuth(unittest.TestCase):
+
+    def test_consistancy(self):
+        data = "f483"
+        wif = util.generate_wif()
+        privkey = keys.wif_to_privkey(wif)
+        pubkey = keys.pubkey_from_wif(wif)
+        signature = keys.sign(privkey, data)
+        valid = keys.verify(pubkey, signature, data)
+        self.assertTrue(valid)
+
+    def test_compatibility(self):
+
+        # https://github.com/Storj/service-middleware/blob/master/test/authenticate.unit.js#L476
+        pubkey = FIXTURES["auth_compatibility"]["pubkey"]
+        signature = FIXTURES["auth_compatibility"]["signature"]
+        data = FIXTURES["auth_compatibility"]["data"]
+        valid = keys.verify(pubkey, signature, data)
+        self.assertTrue(valid)
 
 
 if __name__ == "__main__":

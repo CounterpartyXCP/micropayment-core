@@ -3,12 +3,16 @@
 # License: MIT (see LICENSE file)
 
 
-import pyelliptic
 from ecdsa import SigningKey
 from ecdsa.curves import SECP256k1
 from pycoin.serialize import b2h, h2b
 from pycoin.key import Key
 from pycoin import encoding, networks
+from pycoin.ecdsa import sign as ecdsa_sign
+from pycoin.ecdsa import verify as ecdsa_verify
+from pycoin.ecdsa import generator_secp256k1 as G
+from micropayment_core import util
+import ecdsa
 
 
 # Formats (DER = PEM = WIF = PrivKey > PubKey > Address)
@@ -29,15 +33,6 @@ from pycoin import encoding, networks
 # privkey_to_pem
 # pubkey_from_pem
 # address_from_pem
-
-
-class InvalidSignature(Exception):
-
-    def __init__(self, pubkey, signature, data):
-        msg = "Invalid auth signature for pubkey {0}, signature {1}, data {2}"
-        super(InvalidSignature, self).__init__(
-            msg.format(pubkey, signature, data)
-        )
 
 
 def pubkey_from_wif(wif):
@@ -232,20 +227,34 @@ def uncompress_pubkey(pubkey):
     return b2h(encoding.public_pair_to_sec(public_pair, compressed=False))
 
 
-def sign(wif, data):
-    # FIXME add doc string
-    privkey = wif_to_privkey(wif)
-    pubkey = pubkey_from_wif(wif)
-    uncompressed_sec = h2b(uncompress_pubkey(pubkey))
-    ecc = pyelliptic.ECC(
-        curve="secp256k1", pubkey=uncompressed_sec, privkey=h2b(privkey)
-    )
-    return b2h(ecc.sign(data))
+def sign(privkey, data):
+    """ Sign data with given private key.
+
+    Args:
+        privkey (str): Hex encoded private key
+        data (str): Hex encoded data to be signed.
+
+    Return:
+        str: Hex encoded signature in DER format.
+    """
+    wif = privkey_to_wif(privkey)
+    e = util.bytestoint(h2b(data))
+    secret_exponent = Key.from_text(wif).secret_exponent()
+    r, s = ecdsa_sign(G, secret_exponent, e)
+    return b2h(ecdsa.util.sigencode_der(r, s, G.order()))
 
 
 def verify(pubkey, signature, data):
-    # FIXME add doc string
-    uncompressed_sec = h2b(uncompress_pubkey(pubkey))
-    ecc = pyelliptic.ECC(curve="secp256k1", pubkey=uncompressed_sec)
-    if not ecc.verify(h2b(signature), data):
-        raise InvalidSignature(pubkey, signature, data)
+    """ Verify data is signed by private key.
+
+    Args:
+        pubkey (str): Hex encoded 33Byte compressed public key
+        signature (str): Hex encoded signature in DER format.
+
+    Return:
+        bool: True if signature is valid.
+    """
+    public_pair = encoding.sec_to_public_pair(h2b(pubkey))
+    val = util.bytestoint(h2b(data))
+    sig = ecdsa.util.sigdecode_der(h2b(signature), G.order())
+    return ecdsa_verify(G, public_pair, val, sig)

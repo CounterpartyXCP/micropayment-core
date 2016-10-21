@@ -4,6 +4,7 @@
 
 
 import os
+import codecs
 from pycoin.tx import Tx
 from pycoin.serialize import b2h
 from pycoin.serialize import h2b
@@ -17,7 +18,7 @@ def gettxid(rawtx):
     return b2h_rev(Tx.from_hex(rawtx).hash())
 
 
-def random_wif(netcode="BTC"):
+def generate_wif(netcode="BTC"):
     return BIP32Node.from_master_secret(os.urandom(32), netcode=netcode).wif()
 
 
@@ -31,3 +32,7 @@ def hash160hex(hexdata):
 
 def to_satoshis(btc_quantity):
     return int(btc_quantity * 100000000)
+
+
+def bytestoint(data):
+    return int(codecs.encode(data, 'hex_codec'), 16)
