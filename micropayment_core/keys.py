@@ -3,6 +3,7 @@
 # License: MIT (see LICENSE file)
 
 
+import hashlib
 from ecdsa import SigningKey
 from ecdsa.curves import SECP256k1
 from pycoin.serialize import b2h, h2b
@@ -237,9 +238,8 @@ def sign(privkey, data):
     Return:
         str: Hex encoded signature in DER format.
     """
-    wif = privkey_to_wif(privkey)
+    secret_exponent = Key.from_text(privkey_to_wif(privkey)).secret_exponent()
     e = util.bytestoint(h2b(data))
-    secret_exponent = Key.from_text(wif).secret_exponent()
     r, s = ecdsa_sign(G, secret_exponent, e)
     return b2h(ecdsa.util.sigencode_der(r, s, G.order()))
 
@@ -258,3 +258,37 @@ def verify(pubkey, signature, data):
     val = util.bytestoint(h2b(data))
     sig = ecdsa.util.sigdecode_der(h2b(signature), G.order())
     return ecdsa_verify(G, public_pair, val, sig)
+
+
+def sign_sha256(privkey, data):
+    """ Sign data with given private key.
+
+    Will preform sha256(data) before signing.
+
+    Args:
+        privkey (str): Hex encoded private key
+        data (str): Hex encoded data to be signed.
+
+    Return:
+        str: Hex encoded signature in DER format.
+    """
+    if not isinstance(data, bytes):
+        data = data.encode("utf-8")
+    return sign(privkey, hashlib.sha256(data).hexdigest())
+
+
+def verify_sha256(pubkey, signature, data):
+    """ Verify data is signed by private key.
+
+    Will preform sha256(data) before verification.
+
+    Args:
+        pubkey (str): Hex encoded 33Byte compressed public key
+        signature (str): Hex encoded signature in DER format.
+
+    Return:
+        bool: True if signature is valid.
+    """
+    if not isinstance(data, bytes):
+        data = data.encode("utf-8")
+    return verify(pubkey, signature, hashlib.sha256(data).hexdigest())

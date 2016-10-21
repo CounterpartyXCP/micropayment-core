@@ -85,6 +85,15 @@ class TestAuth(unittest.TestCase):
         valid = keys.verify(pubkey, signature, data)
         self.assertTrue(valid)
 
+    def test_consistancy_sha256(self):
+        data = "f483"
+        wif = util.generate_wif()
+        privkey = keys.wif_to_privkey(wif)
+        pubkey = keys.pubkey_from_wif(wif)
+        signature = keys.sign_sha256(privkey, data)
+        valid = keys.verify_sha256(pubkey, signature, data)
+        self.assertTrue(valid)
+
     def test_compatibility(self):
 
         # https://github.com/Storj/service-middleware/blob/master/test/authenticate.unit.js#L476
