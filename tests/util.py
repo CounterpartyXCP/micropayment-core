@@ -1,7 +1,6 @@
 import json
 import unittest
 from micropayment_core import util
-from micropayment_core import keys
 
 
 FIXTURES = json.load(open("tests/fixtures.json"))
@@ -29,11 +28,6 @@ class TestUtils(unittest.TestCase):
     def test_to_satoshis(self):
         satoshis = util.to_satoshis(1.0)
         self.assertEqual(satoshis, 100000000)
-
-    def test_generate_wif(self):
-        wif = util.generate_wif()
-        privkey = keys.wif_to_privkey(wif)
-        self.assertEqual(len(privkey), 64)
 
 
 if __name__ == "__main__":

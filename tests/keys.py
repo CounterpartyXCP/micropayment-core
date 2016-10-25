@@ -1,7 +1,6 @@
 import json
 import unittest
 from micropayment_core import keys
-from micropayment_core import util
 
 
 FIXTURES = json.load(open("tests/fixtures.json"))
@@ -33,29 +32,13 @@ class TestKeys(unittest.TestCase):
         pubkey = keys.pubkey_from_privkey(PRIVKEY)
         self.assertEqual(pubkey, PUBKEY)
 
-    def test_pubkey_from_der(self):
-        pubkey = keys.pubkey_from_der(DER)
-        self.assertEqual(pubkey, PUBKEY)
-
     def test_address_from_privkey(self):
         address = keys.address_from_privkey(PRIVKEY, netcode=NETCODE)
-        self.assertEqual(address, ADDRESS)
-
-    def test_address_from_der(self):
-        address = keys.address_from_der(DER, netcode=NETCODE)
         self.assertEqual(address, ADDRESS)
 
     def test_wif_to_privkey(self):
         privkey = keys.wif_to_privkey(WIF)
         self.assertEqual(privkey, PRIVKEY)
-
-    def test_wif_to_der(self):
-        der = keys.wif_to_der(WIF)
-        self.assertEqual(DER, der)
-
-    def test_der_to_wif(self):
-        wif = keys.der_to_wif(DER, netcode=NETCODE)
-        self.assertEqual(WIF, wif)
 
     def test_address_from_wif(self):
         address = keys.address_from_wif(WIF)
@@ -73,12 +56,22 @@ class TestKeys(unittest.TestCase):
         netcode = keys.netcode_from_address(ADDRESS)
         self.assertEqual(netcode, NETCODE)
 
+    def test_generate_wif(self):
+        wif = keys.generate_wif()
+        privkey = keys.wif_to_privkey(wif)
+        self.assertEqual(len(privkey), 64)
+
+    def test_pem_serialization(self):
+        pem = keys.privkey_to_pem(PRIVKEY)
+        privkey = keys.pem_to_privkey(pem)
+        self.assertEqual(privkey, PRIVKEY)
+
 
 class TestAuth(unittest.TestCase):
 
     def test_consistancy(self):
         data = "f483"
-        wif = util.generate_wif()
+        wif = keys.generate_wif()
         privkey = keys.wif_to_privkey(wif)
         pubkey = keys.pubkey_from_wif(wif)
         signature = keys.sign(privkey, data)
@@ -87,7 +80,7 @@ class TestAuth(unittest.TestCase):
 
     def test_consistancy_sha256(self):
         data = "f483"
-        wif = util.generate_wif()
+        wif = keys.generate_wif()
         privkey = keys.wif_to_privkey(wif)
         pubkey = keys.pubkey_from_wif(wif)
         signature = keys.sign_sha256(privkey, data)

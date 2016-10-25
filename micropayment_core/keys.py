@@ -3,6 +3,7 @@
 # License: MIT (see LICENSE file)
 
 
+import os
 import hashlib
 from ecdsa import SigningKey
 from ecdsa.curves import SECP256k1
@@ -12,6 +13,7 @@ from pycoin import encoding, networks
 from pycoin.ecdsa import sign as ecdsa_sign
 from pycoin.ecdsa import verify as ecdsa_verify
 from pycoin.ecdsa import generator_secp256k1 as G
+from pycoin.key.BIP32Node import BIP32Node
 from micropayment_core import util
 import ecdsa
 
@@ -25,17 +27,6 @@ import ecdsa
 # * Address: Bitcoin address format
 
 
-# TODO add functions
-# pem_to_der
-# pem_to_wif
-# pem_to_privkey
-# der_to_pem
-# wif_to_pem
-# privkey_to_pem
-# pubkey_from_pem
-# address_from_pem
-
-
 def pubkey_from_wif(wif):
     """ Get public key from given bitcoin wif.
 
@@ -46,18 +37,6 @@ def pubkey_from_wif(wif):
         str: Hex encoded 33Byte compressed public key.
     """
     return b2h(Key.from_text(wif).sec())
-
-
-def pubkey_from_der(der):
-    """ Get public key from given DER encoded private key.
-
-    Args:
-        der (bytes): Private key in binary encoded DER format.
-
-    Return:
-        str: Hex encoded 33Byte compressed public key.
-    """
-    return pubkey_from_privkey(der_to_privkey(der))
 
 
 def address_from_privkey(privkey, netcode="BTC"):
@@ -73,17 +52,30 @@ def address_from_privkey(privkey, netcode="BTC"):
     return address_from_pubkey(pubkey_from_privkey(privkey), netcode=netcode)
 
 
-def address_from_der(der, netcode="BTC"):
-    """ Get bitcoin address from given DER encoded private key.
+def pem_to_privkey(pem):
+    """ Get private key from given PEM encoded private key format.
 
     Args:
-        der (bytes): Private key in binary encoded DER format.
-        netcode (str): Netcode for resulting bitcoin address.
+        pem (bytes): Private key in base64 encoded PEM format.
 
     Return:
-        str: Bitcoin address
+        str: Hex encoded 32Byte secret exponent
     """
-    return address_from_pubkey(pubkey_from_der(der), netcode=netcode)
+    sk = SigningKey.from_pem(pem)
+    # FIXME assert is secp256k1 private key
+    return b2h(sk.to_string())
+
+
+def privkey_to_pem(privkey):
+    """ Get private key in PEM encoded fromat.
+
+    Args:
+        privkey (str): Hex encoded private key
+
+    Return:
+        str: Private key in base64 encoded PEM format.
+    """
+    return SigningKey.from_string(h2b(privkey), curve=SECP256k1).to_pem()
 
 
 def der_to_privkey(der):
@@ -124,18 +116,6 @@ def wif_to_privkey(wif):
     return b2h(encoding.to_bytes_32(Key.from_text(wif).secret_exponent()))
 
 
-def wif_to_der(wif):
-    """ Get private key in DER encoded format from given bitcoin wif.
-
-    Args:
-        wif (str): Private key encode in bitcoin wif format.
-
-    Return:
-        str: Private key in binary encoded DER format.
-    """
-    return privkey_to_der(wif_to_privkey(wif))
-
-
 def privkey_to_wif(privkey, netcode="BTC"):
     """ Get private key from bitcoin wif.
 
@@ -148,19 +128,6 @@ def privkey_to_wif(privkey, netcode="BTC"):
     prefix = networks.wif_prefix_for_netcode(netcode)
     secret_exponent = encoding.from_bytes_32(h2b(privkey))
     return encoding.secret_exponent_to_wif(secret_exponent, wif_prefix=prefix)
-
-
-def der_to_wif(der, netcode="BTC"):
-    """ Get DER encoded private key from given bitcoin wif.
-
-    Args:
-        der (bytes): Private key in binary encoded DER format.
-        netcode (str): Netcode for resulting bitcoin address.
-
-    Return:
-        str: Private key encode in bitcoin wif format.
-    """
-    return privkey_to_wif(der_to_privkey(der), netcode=netcode)
 
 
 def pubkey_from_privkey(privkey):
@@ -292,3 +259,13 @@ def verify_sha256(pubkey, signature, data):
     if not isinstance(data, bytes):
         data = data.encode("utf-8")
     return verify(pubkey, signature, hashlib.sha256(data).hexdigest())
+
+
+def generate_wif(netcode="BTC"):
+    # FIXME add doc string
+    return BIP32Node.from_master_secret(os.urandom(32), netcode=netcode).wif()
+
+
+def generate_privkey():
+    # FIXME add doc string
+    return wif_to_privkey(generate_wif())
