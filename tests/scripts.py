@@ -163,7 +163,12 @@ class TestScripts(unittest.TestCase):
         self.assertEqual(commit_script, expected)
 
     def test_compile_commit_scriptsig(self):
-        pass  # TODO implement
+        deposit_script_hex = FIXTURES["commit_scriptsig"]["deposit_script_hex"]
+        payer_sig = FIXTURES["commit_scriptsig"]["payer_sig"]
+        payee_sig = FIXTURES["commit_scriptsig"]["payee_sig"]
+        scriptsig = scripts.compile_commit_scriptsig(payer_sig, payee_sig,
+                                                     deposit_script_hex)
+        self.assertEqual(scriptsig, FIXTURES["commit_scriptsig"]["scriptsig"])
 
     def test_sign_deposit(self):
         rawtx = scripts.sign_deposit(
@@ -183,19 +188,33 @@ class TestScripts(unittest.TestCase):
         )
         self.assertTrue(rawtx, FIXTURES["sign"]["finalize_commit"]["expected"])
 
+    def test_sign_finalize_commit_bad_sigvalue(self):
+
+        def function():
+            kwargs = FIXTURES["sign"]["finalize_commit_bad_sigvalue"]["input"]
+            scripts.sign_finalize_commit(_get_tx_func, **kwargs)
+        self.assertRaises(scripts.InvalidPayerSignature, function)
+
+    def test_sign_finalize_commit_bad_sigformat(self):
+
+        def function():
+            kwargs = FIXTURES["sign"]["finalize_commit_bad_sigformat"]["input"]
+            scripts.sign_finalize_commit(_get_tx_func, **kwargs)
+        self.assertRaises(scripts.InvalidPayerSignature, function)
+
     def test_sign_finalize_commit_unsigned(self):
 
         def function():
             kwargs = FIXTURES["sign"]["finalize_commit_unsigned"]["input"]
             scripts.sign_finalize_commit(_get_tx_func, **kwargs)
-        self.assertRaises(scripts.InvalidPayerSignature, function)
+        self.assertRaises(scripts.InvalidScript, function)  # bad scriptsig
 
     def test_sign_finalize_commit_bad_script(self):
 
         def function():
             kwargs = FIXTURES["sign"]["finalize_commit_bad_script"]["input"]
             scripts.sign_finalize_commit(_get_tx_func, **kwargs)
-        self.assertRaises(ValueError, function)
+        self.assertRaises(ValueError, function)  # from  p2sh lookup
 
     def test_sign_revoke_recover(self):
         rawtx = scripts.sign_revoke_recover(

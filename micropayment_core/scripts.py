@@ -3,19 +3,18 @@
 # License: MIT (see LICENSE file)
 
 
-import pycoin
+from pycoin import ecdsa
+from pycoin import encoding
 from pycoin.key import Key
 from pycoin.tx import Tx
 from pycoin.tx.script import tools
-from pycoin.encoding import hash160
 from pycoin.tx.pay_to import SUBCLASSES
-from pycoin.serialize import b2h, h2b, b2h_rev
 from pycoin.tx.pay_to.ScriptType import DEFAULT_PLACEHOLDER_SIGNATURE
 from pycoin.tx.pay_to.ScriptType import ScriptType
-from pycoin import encoding
 from pycoin.tx.script.check_signature import parse_signature_blob
 from pycoin.tx.script.der import UnexpectedDER
-from pycoin import ecdsa
+from pycoin.tx.pay_to import build_hash160_lookup, build_p2sh_lookup
+from pycoin.serialize import b2h, h2b, b2h_rev
 
 
 MAX_SEQUENCE = 0x0000FFFF
@@ -61,8 +60,8 @@ class InvalidScript(Exception):
 
 class InvalidPayerSignature(Exception):
 
-    def __init__(self):
-        msg = "Invalid or missing payer signature!"
+    def __init__(self, reason):
+        msg = "Invalid payer signature: {0}!".format(reason)
         super(InvalidPayerSignature, self).__init__(msg)
 
 
@@ -71,6 +70,10 @@ class InvalidSequenceValue(Exception):
     def __init__(self, x):
         msg = "Invalid sequence value: {0}"
         super(InvalidSequenceValue, self).__init__(msg.format(x))
+
+
+class BadSignature(Exception):
+    pass
 
 
 def _get_word(script_bin, index):
@@ -85,6 +88,7 @@ def _get_word(script_bin, index):
 
 
 def validate(reference_script_hex, untrusted_script_hex):
+    # FIXME add doc string
     ref_script_bin = h2b(reference_script_hex)
     untrusted_script_bin = h2b(untrusted_script_hex)
     r_pc = 0
@@ -101,6 +105,7 @@ def validate(reference_script_hex, untrusted_script_hex):
 
 
 def validate_deposit_script(deposit_script_hex, validate_expire_time=True):
+    # FIXME add doc string
     reference_script_hex = compile_deposit_script(
         "deadbeef", "deadbeef", "deadbeef", "deadbeef"
     )
@@ -110,6 +115,7 @@ def validate_deposit_script(deposit_script_hex, validate_expire_time=True):
 
 
 def validate_commit_script(commit_script_hex, validate_delay_time=True):
+    # FIXME add doc string
     reference_script_hex = compile_commit_script(
         "deadbeef", "deadbeef", "deadbeef", "deadbeef", "deadbeef"
     )
@@ -119,6 +125,7 @@ def validate_commit_script(commit_script_hex, validate_delay_time=True):
 
 
 def get_spend_secret(payout_rawtx, commit_script_hex):
+    # FIXME add doc string
     validate_commit_script(commit_script_hex)
     commit_script_bin = h2b(commit_script_hex)
     tx = Tx.from_hex(payout_rawtx)
@@ -146,54 +153,63 @@ def _parse_sequence_value(opcode, data, disassembled):
 
 
 def get_commit_payer_pubkey(script_hex):
+    # FIXME add doc string
     validate_commit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 13)
     return b2h(data)
 
 
 def get_commit_payee_pubkey(script_hex):
+    # FIXME add doc string
     validate_commit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 7)
     return b2h(data)
 
 
 def get_commit_delay_time(script_hex):
+    # FIXME add doc string
     validate_commit_script(script_hex, validate_delay_time=False)
     opcode, data, disassembled = _get_word(h2b(script_hex), 1)
     return _parse_sequence_value(opcode, data, disassembled)
 
 
 def get_commit_spend_secret_hash(script_hex):
+    # FIXME add doc string
     validate_commit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 5)
     return b2h(data)
 
 
 def get_commit_revoke_secret_hash(script_hex):
+    # FIXME add doc string
     validate_commit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 11)
     return b2h(data)
 
 
 def get_deposit_payer_pubkey(script_hex):
+    # FIXME add doc string
     validate_deposit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 2)
     return b2h(data)
 
 
 def get_deposit_payee_pubkey(script_hex):
+    # FIXME add doc string
     validate_deposit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 3)
     return b2h(data)
 
 
 def get_deposit_expire_time(script_hex):
+    # FIXME add doc string
     validate_deposit_script(script_hex, validate_expire_time=False)
     opcode, data, disassembled = _get_word(h2b(script_hex), 14)
     return _parse_sequence_value(opcode, data, disassembled)
 
 
 def get_deposit_spend_secret_hash(script_hex):
+    # FIXME add doc string
     validate_deposit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 9)
     return b2h(data)
@@ -223,6 +239,7 @@ def compile_deposit_script(payer_pubkey, payee_pubkey,
 
 def compile_commit_script(payer_pubkey, payee_pubkey, spend_secret_hash,
                           revoke_secret_hash, delay_time):
+    # FIXME add doc string
     script_asm = COMMIT_SCRIPT.format(
         payer_pubkey=payer_pubkey,
         payee_pubkey=payee_pubkey,
@@ -234,22 +251,22 @@ def compile_commit_script(payer_pubkey, payee_pubkey, spend_secret_hash,
 
 
 def compile_commit_scriptsig(payer_sig, payee_sig, deposit_script_hex):
-    sig_asm = COMMIT_SCRIPTSIG.format(
-        payer_sig=payer_sig, payee_sig=payee_sig
-    )
+    # FIXME add doc string
+    validate_deposit_script(deposit_script_hex)
+    sig_asm = COMMIT_SCRIPTSIG.format(payer_sig=payer_sig, payee_sig=payee_sig)
     return b2h(tools.compile("{0} {1}".format(sig_asm, deposit_script_hex)))
 
 
 def sign_deposit(get_tx_func, payer_wif, rawtx):
+    # FIXME add doc string
     tx = _load_tx(get_tx_func, rawtx)
     key = Key.from_text(payer_wif)
-    secret_exponents = [key.secret_exponent()]
-    hash160_lookup = pycoin.tx.pay_to.build_hash160_lookup(secret_exponents)
-    tx.sign(hash160_lookup)
+    tx.sign(build_hash160_lookup([key.secret_exponent()]))
     return tx.as_hex()
 
 
 def sign_created_commit(get_tx_func, payer_wif, rawtx, deposit_script_hex):
+    # FIXME add doc string
     validate_deposit_script(deposit_script_hex)
     tx = _load_tx(get_tx_func, rawtx)
     expire_time = get_deposit_expire_time(deposit_script_hex)
@@ -262,6 +279,7 @@ def sign_created_commit(get_tx_func, payer_wif, rawtx, deposit_script_hex):
 
 
 def sign_finalize_commit(get_tx_func, payee_wif, rawtx, deposit_script_hex):
+    # FIXME add doc string
     validate_deposit_script(deposit_script_hex)
     tx = _load_tx(get_tx_func, rawtx)
     expire_time = get_deposit_expire_time(deposit_script_hex)
@@ -275,6 +293,7 @@ def sign_finalize_commit(get_tx_func, payee_wif, rawtx, deposit_script_hex):
 
 def sign_revoke_recover(get_tx_func, payer_wif, rawtx,
                         commit_script_hex, revoke_secret):
+    # FIXME add doc string
     validate_commit_script(commit_script_hex)
     return _sign_commit_recover(get_tx_func, payer_wif, rawtx,
                                 commit_script_hex, "revoke",
@@ -283,6 +302,7 @@ def sign_revoke_recover(get_tx_func, payer_wif, rawtx,
 
 def sign_payout_recover(get_tx_func, payee_wif, rawtx,
                         commit_script_hex, spend_secret):
+    # FIXME add doc string
     validate_commit_script(commit_script_hex)
     return _sign_commit_recover(get_tx_func, payee_wif, rawtx,
                                 commit_script_hex, "payout",
@@ -291,6 +311,7 @@ def sign_payout_recover(get_tx_func, payee_wif, rawtx,
 
 def sign_change_recover(get_tx_func, payer_wif, rawtx,
                         deposit_script_hex, spend_secret):
+    # FIXME add doc string
     validate_deposit_script(deposit_script_hex)
     return _sign_deposit_recover(
         get_tx_func, payer_wif, rawtx,
@@ -299,6 +320,7 @@ def sign_change_recover(get_tx_func, payer_wif, rawtx,
 
 
 def sign_expire_recover(get_tx_func, payer_wif, rawtx, deposit_script_hex):
+    # FIXME add doc string
     validate_deposit_script(deposit_script_hex)
     return _sign_deposit_recover(
         get_tx_func, payer_wif, rawtx, deposit_script_hex, "expire", None
@@ -341,10 +363,9 @@ def _sign_commit_recover(get_tx_func, wif, rawtx, script_hex, spend_type,
 
 def _make_lookups(wif, script_hex):
     script_bin = h2b(script_hex)
-    hash160_lookup = pycoin.tx.pay_to.build_hash160_lookup(
-        [pycoin.key.Key.from_text(wif).secret_exponent()]
-    )
-    p2sh_lookup = pycoin.tx.pay_to.build_p2sh_lookup([script_bin])
+    key = Key.from_text(wif)
+    hash160_lookup = build_hash160_lookup([key.secret_exponent()])
+    p2sh_lookup = build_p2sh_lookup([script_bin])
     return hash160_lookup, p2sh_lookup
 
 
@@ -454,7 +475,7 @@ class _AbsDepositScript(ScriptType):
             secret_exponent, kwargs["sign_value"], kwargs["signature_type"]
         )
         spend_secret_hash = get_deposit_spend_secret_hash(b2h(self.script))
-        provided_spend_secret_hash = b2h(hash160(h2b(spend_secret)))
+        provided_spend_secret_hash = b2h(encoding.hash160(h2b(spend_secret)))
         assert(spend_secret_hash == provided_spend_secret_hash)
         script_asm = CHANGE_SCRIPTSIG.format(
             sig=b2h(sig), secret=spend_secret
@@ -481,22 +502,30 @@ class _AbsDepositScript(ScriptType):
         signature_type = kwargs.get("signature_type")
         existing_script = kwargs.get("existing_script")
 
-        # validate payer sig
+        # validate existing script
+        reference_script_hex = compile_commit_scriptsig(
+            "deadbeef", "deadbeef", b2h(self.script)
+        )
+        validate(reference_script_hex, b2h(existing_script))
+
+        # check provided payer signature
         try:
             opcode, data, pc = tools.get_opcode(existing_script, 0)  # OP_0
             opcode, payer_sig, pc = tools.get_opcode(existing_script, pc)
-            sig_pair, actual_signature_type = parse_signature_blob(payer_sig)
+
+            # raise Exception(b2h(payer_sig))
+
+            # verify signature type
+            sig_r_s, actual_signature_type = parse_signature_blob(payer_sig)
             assert(signature_type == actual_signature_type)
+
+            # verify payer signature
             public_pair = encoding.sec_to_public_pair(self.payer_sec)
-            sig_pair, signature_type = parse_signature_blob(payer_sig)
-            valid = ecdsa.verify(ecdsa.generator_secp256k1, public_pair,
-                                 sign_value, sig_pair)
-            if not valid:
-                raise InvalidPayerSignature()
+            if not ecdsa.verify(ecdsa.generator_secp256k1, public_pair,
+                                sign_value, sig_r_s):
+                raise InvalidPayerSignature("invalid r s values")
         except UnexpectedDER:
-            raise InvalidPayerSignature()
-        except encoding.EncodingError:
-            raise InvalidPayerSignature()
+            raise InvalidPayerSignature("not in DER format")
 
         # sign
         private_key = hash160_lookup.get(encoding.hash160(self.payee_sec))

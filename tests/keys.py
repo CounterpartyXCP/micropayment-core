@@ -61,10 +61,20 @@ class TestKeys(unittest.TestCase):
         privkey = keys.wif_to_privkey(wif)
         self.assertEqual(len(privkey), 64)
 
+    def test_generate_wif(self):
+        privkey = keys.generate_privkey()
+        self.assertEqual(len(privkey), 64)
+
     def test_pem_serialization(self):
         pem = keys.privkey_to_pem(PRIVKEY)
         privkey = keys.pem_to_privkey(pem)
         self.assertEqual(privkey, PRIVKEY)
+
+    def test_pubkey_compression(self):
+        uncompressed = keys.uncompress_pubkey(PUBKEY)
+        self.assertEqual(len(uncompressed), 65 * 2)  # 65bytes
+        compressed = keys.compress_pubkey(uncompressed)
+        self.assertEqual(compressed, PUBKEY)
 
 
 class TestAuth(unittest.TestCase):
@@ -80,6 +90,15 @@ class TestAuth(unittest.TestCase):
 
     def test_consistancy_sha256(self):
         data = "f483"
+        wif = keys.generate_wif()
+        privkey = keys.wif_to_privkey(wif)
+        pubkey = keys.pubkey_from_wif(wif)
+        signature = keys.sign_sha256(privkey, data)
+        valid = keys.verify_sha256(pubkey, signature, data)
+        self.assertTrue(valid)
+
+    def test_unicode_sha256(self):
+        data = u"üöä"
         wif = keys.generate_wif()
         privkey = keys.wif_to_privkey(wif)
         pubkey = keys.pubkey_from_wif(wif)

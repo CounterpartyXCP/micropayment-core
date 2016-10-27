@@ -190,9 +190,21 @@ def uncompress_pubkey(pubkey):
     Return:
         str: Hex encoded uncompressed 65byte public key (4 + x + y).
     """
-    compressed_pubkey = h2b(pubkey)
-    public_pair = encoding.sec_to_public_pair(compressed_pubkey)
+    public_pair = encoding.sec_to_public_pair(h2b(pubkey))
     return b2h(encoding.public_pair_to_sec(public_pair, compressed=False))
+
+
+def compress_pubkey(uncompressed_pubkey):
+    """ Convert uncompressed public key to compressed public key.
+
+    Args:
+        pubkey (str): Hex encoded 65Byte uncompressed public key
+
+    Return:
+        str: Hex encoded 33Byte compressed public key
+    """
+    public_pair = encoding.sec_to_public_pair(h2b(uncompressed_pubkey))
+    return b2h(encoding.public_pair_to_sec(public_pair, compressed=True))
 
 
 def sign(privkey, data):
@@ -262,10 +274,21 @@ def verify_sha256(pubkey, signature, data):
 
 
 def generate_wif(netcode="BTC"):
-    # FIXME add doc string
+    """ Generate a new wif with secure random data.
+
+    Args:
+        netcode (str): Netcode for resulting bitcoin address.
+
+    Return:
+        str: Private key encode in bitcoin wif format.
+    """
     return BIP32Node.from_master_secret(os.urandom(32), netcode=netcode).wif()
 
 
 def generate_privkey():
-    # FIXME add doc string
+    """ Generate a new private key with secure random data.
+
+    Return:
+        str: Hex encoded 32Byte secret exponent
+    """
     return wif_to_privkey(generate_wif())
