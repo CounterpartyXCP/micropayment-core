@@ -48,9 +48,6 @@ PAYOUT_SCRIPTSIG = "{sig} {spend_secret} OP_1"
 REVOKE_SCRIPTSIG = "{sig} {revoke_secret} OP_0"
 
 
-# FIXME add simple functions to validate transactions
-
-
 class InvalidScript(Exception):
 
     def __init__(self, x):
@@ -76,56 +73,54 @@ class BadSignature(Exception):
     pass
 
 
-def _get_word(script_bin, index):
-    pc = 0
-    i = 0
-    while pc < len(script_bin) and i <= index:
-        opcode, data, pc = tools.get_opcode(script_bin, pc)
-        i += 1
-    if i != index + 1:
-        raise ValueError(index)
-    return opcode, data, tools.disassemble_for_opcode_data(opcode, data)
-
-
-def validate(reference_script_hex, untrusted_script_hex):
-    # FIXME add doc string
-    ref_script_bin = h2b(reference_script_hex)
-    untrusted_script_bin = h2b(untrusted_script_hex)
-    r_pc = 0
-    u_pc = 0
-    while r_pc < len(ref_script_bin) and u_pc < len(untrusted_script_bin):
-        r_opcode, r_data, r_pc = tools.get_opcode(ref_script_bin, r_pc)
-        u_opcode, u_data, u_pc = tools.get_opcode(untrusted_script_bin, u_pc)
-        if r_data is not None and b2h(r_data) == "deadbeef":
-            continue  # placeholder for expected variable
-        if r_opcode != u_opcode or r_data != u_data:
-            raise InvalidScript(b2h(untrusted_script_bin))
-    if r_pc != len(ref_script_bin) or u_pc != len(untrusted_script_bin):
-        raise InvalidScript(b2h(untrusted_script_bin))
-
-
 def validate_deposit_script(deposit_script_hex, validate_expire_time=True):
-    # FIXME add doc string
+    """ Validate given script is a depoist script.
+
+    Args:
+        deposit_script_hex (str): Hex encoded deposit script.
+        validate_expire_time (bool): Validate script expire time.
+
+    Raises:
+        InvalidScript: If the script is not a deposit script.
+        InvalidSequenceValue: If the deposit script expire time is invalid.
+    """
     reference_script_hex = compile_deposit_script(
         "deadbeef", "deadbeef", "deadbeef", "deadbeef"
     )
-    validate(reference_script_hex, deposit_script_hex)
+    _validate(reference_script_hex, deposit_script_hex)
     if validate_expire_time:
         get_deposit_expire_time(deposit_script_hex)  # has valid sequence value
 
 
 def validate_commit_script(commit_script_hex, validate_delay_time=True):
-    # FIXME add doc string
+    """ Validate given script is a commit script.
+
+    Args:
+        commit_script_hex (str): Hex encoded commit script.
+        validate_delay_time (bool): Validate script delay time.
+
+    Raises:
+        InvalidScript: If the script is not a deposit script.
+        InvalidSequenceValue: If the commit script delay time is invalid.
+    """
     reference_script_hex = compile_commit_script(
         "deadbeef", "deadbeef", "deadbeef", "deadbeef", "deadbeef"
     )
-    validate(reference_script_hex, commit_script_hex)
+    _validate(reference_script_hex, commit_script_hex)
     if validate_delay_time:
         get_commit_delay_time(commit_script_hex)  # has valid sequence value
 
 
 def get_spend_secret(payout_rawtx, commit_script_hex):
-    # FIXME add doc string
+    """ Get spend secret for given payout transaction.
+
+    Args:
+        payout_rawtx (str): Payout rawtx hex.
+        commit_script_hex (str): Hex encoded commit script.
+
+    Return:
+        str: Hex spend secret or None if not a payout for given commit script.
+    """
     validate_commit_script(commit_script_hex)
     commit_script_bin = h2b(commit_script_hex)
     tx = Tx.from_hex(payout_rawtx)
@@ -139,77 +134,64 @@ def get_spend_secret(payout_rawtx, commit_script_hex):
         return None
 
 
-def _parse_sequence_value(opcode, data, disassembled):
-    value = None
-    if opcode == 0:
-        value = 0
-    elif 0 < opcode < 76:  # get from data bytes
-        value = tools.int_from_script_bytes(data)
-    elif 80 < opcode < 97:  # OP_1 - OP_16
-        value = opcode - 80
-    if not (MAX_SEQUENCE >= value >= 0):
-        raise InvalidSequenceValue(disassembled)
-    return value
-
-
 def get_commit_payer_pubkey(script_hex):
-    # FIXME add doc string
+    """ Return payer pubkey for given commit script. """
     validate_commit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 13)
     return b2h(data)
 
 
 def get_commit_payee_pubkey(script_hex):
-    # FIXME add doc string
+    """ Return payee pubkey for given commit script. """
     validate_commit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 7)
     return b2h(data)
 
 
 def get_commit_delay_time(script_hex):
-    # FIXME add doc string
+    """ Return delay time for given commit script. """
     validate_commit_script(script_hex, validate_delay_time=False)
     opcode, data, disassembled = _get_word(h2b(script_hex), 1)
     return _parse_sequence_value(opcode, data, disassembled)
 
 
 def get_commit_spend_secret_hash(script_hex):
-    # FIXME add doc string
+    """ Return spend secret for given commit script. """
     validate_commit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 5)
     return b2h(data)
 
 
 def get_commit_revoke_secret_hash(script_hex):
-    # FIXME add doc string
+    """ Return revoke secret hash for given commit script. """
     validate_commit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 11)
     return b2h(data)
 
 
 def get_deposit_payer_pubkey(script_hex):
-    # FIXME add doc string
+    """ Return payer pubkey for given deposit script. """
     validate_deposit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 2)
     return b2h(data)
 
 
 def get_deposit_payee_pubkey(script_hex):
-    # FIXME add doc string
+    """ Return payee pubkey for given deposit script. """
     validate_deposit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 3)
     return b2h(data)
 
 
 def get_deposit_expire_time(script_hex):
-    # FIXME add doc string
+    """ Return expire time for given deposit script. """
     validate_deposit_script(script_hex, validate_expire_time=False)
     opcode, data, disassembled = _get_word(h2b(script_hex), 14)
     return _parse_sequence_value(opcode, data, disassembled)
 
 
 def get_deposit_spend_secret_hash(script_hex):
-    # FIXME add doc string
+    """ Return spend secret hash for given deposit script. """
     validate_deposit_script(script_hex)
     opcode, data, disassembled = _get_word(h2b(script_hex), 9)
     return b2h(data)
@@ -217,7 +199,7 @@ def get_deposit_spend_secret_hash(script_hex):
 
 def compile_deposit_script(payer_pubkey, payee_pubkey,
                            spend_secret_hash, expire_time):
-    """Compile deposit transaction pay ot script.
+    """ Compile deposit transaction pay ot script.
 
     Args:
         payer_pubkey (str): Hex encoded public key in sec format.
@@ -226,7 +208,7 @@ def compile_deposit_script(payer_pubkey, payee_pubkey,
         expire_time (int): Channel expire time in blocks given as int.
 
     Return:
-        Compiled bitcoin script.
+        Compiled hex encoded deposit script.
     """
     script_asm = DEPOSIT_SCRIPT.format(
         payer_pubkey=payer_pubkey,
@@ -239,7 +221,18 @@ def compile_deposit_script(payer_pubkey, payee_pubkey,
 
 def compile_commit_script(payer_pubkey, payee_pubkey, spend_secret_hash,
                           revoke_secret_hash, delay_time):
-    # FIXME add doc string
+    """ Compile commit script for given requirements.
+
+    Args:
+        payer_pubkey (str): Hex encoded public key in sec format.
+        payee_pubkey (str): Hex encoded public key in sec format.
+        spend_secret_hash (str): Hex encoded hash160 of spend secret.
+        revoke_secret_hash (str): TODO
+        delay_time (int): Commit delay time in blocks given as int.
+
+    Return:
+        Compiled hex encoded commit script.
+    """
     script_asm = COMMIT_SCRIPT.format(
         payer_pubkey=payer_pubkey,
         payee_pubkey=payee_pubkey,
@@ -250,15 +243,17 @@ def compile_commit_script(payer_pubkey, payee_pubkey, spend_secret_hash,
     return b2h(tools.compile(script_asm))
 
 
-def compile_commit_scriptsig(payer_sig, payee_sig, deposit_script_hex):
-    # FIXME add doc string
-    validate_deposit_script(deposit_script_hex)
-    sig_asm = COMMIT_SCRIPTSIG.format(payer_sig=payer_sig, payee_sig=payee_sig)
-    return b2h(tools.compile("{0} {1}".format(sig_asm, deposit_script_hex)))
-
-
 def sign_deposit(get_tx_func, payer_wif, rawtx):
-    # FIXME add doc string
+    """ Sign deposit transaction.
+
+    Args:
+        get_tx_func (function): Function (txid) -> matching raw transaction.
+        payer_wif (str): Payer wif used for signing.
+        rawtx (str): Deposit raw transaction to be signed.
+
+    Return:
+        Signed deposit raw transaction.
+    """
     tx = _load_tx(get_tx_func, rawtx)
     key = Key.from_text(payer_wif)
     tx.sign(build_hash160_lookup([key.secret_exponent()]))
@@ -266,7 +261,17 @@ def sign_deposit(get_tx_func, payer_wif, rawtx):
 
 
 def sign_created_commit(get_tx_func, payer_wif, rawtx, deposit_script_hex):
-    # FIXME add doc string
+    """ Sign created commit transaction.
+
+    Args:
+        get_tx_func (function): Function (txid) -> matching raw transaction.
+        payer_wif (str): Payer wif used for signing.
+        rawtx (str): Commit raw transaction to be signed.
+        deposit_script_hex (str): Matching deposit script for given commit.
+
+    Return:
+        Partially signed commit raw transaction.
+    """
     validate_deposit_script(deposit_script_hex)
     tx = _load_tx(get_tx_func, rawtx)
     expire_time = get_deposit_expire_time(deposit_script_hex)
@@ -279,7 +284,17 @@ def sign_created_commit(get_tx_func, payer_wif, rawtx, deposit_script_hex):
 
 
 def sign_finalize_commit(get_tx_func, payee_wif, rawtx, deposit_script_hex):
-    # FIXME add doc string
+    """ Finalize commit transaction signature.
+
+    Args:
+        get_tx_func (function): Function (txid) -> matching raw transaction.
+        payee_wif (str): Payee wif used for signing.
+        rawtx (str): Commit raw transaction to be signed.
+        deposit_script_hex (str): Matching deposit script for given commit.
+
+    Return:
+        Fully signed commit raw transaction.
+    """
     validate_deposit_script(deposit_script_hex)
     tx = _load_tx(get_tx_func, rawtx)
     expire_time = get_deposit_expire_time(deposit_script_hex)
@@ -293,7 +308,18 @@ def sign_finalize_commit(get_tx_func, payee_wif, rawtx, deposit_script_hex):
 
 def sign_revoke_recover(get_tx_func, payer_wif, rawtx,
                         commit_script_hex, revoke_secret):
-    # FIXME add doc string
+    """ Sign revoke recover transaction.
+
+    Args:
+        get_tx_func (function): Function (txid) -> matching raw transaction.
+        payer_wif (str): Payer wif used for signing.
+        rawtx (str): Revoke raw transaction to be signed.
+        commit_script_hex (str): Matching commit script for given transaction.
+        revoke_secret (str): Revoke secret for commit script.
+
+    Return:
+        Signed revoke raw transaction.
+    """
     validate_commit_script(commit_script_hex)
     return _sign_commit_recover(get_tx_func, payer_wif, rawtx,
                                 commit_script_hex, "revoke",
@@ -302,7 +328,17 @@ def sign_revoke_recover(get_tx_func, payer_wif, rawtx,
 
 def sign_payout_recover(get_tx_func, payee_wif, rawtx,
                         commit_script_hex, spend_secret):
-    # FIXME add doc string
+    """ Sign payout recover transaction.
+
+    Args:
+        get_tx_func (function): Function (txid) -> matching raw transaction.
+        payee_wif (str): Payee wif used for signing.
+        rawtx (str): Payout raw transaction to be signed.
+        commit_script_hex (str): Matching commit script for given transaction.
+
+    Return:
+        Signed payout raw transaction.
+    """
     validate_commit_script(commit_script_hex)
     return _sign_commit_recover(get_tx_func, payee_wif, rawtx,
                                 commit_script_hex, "payout",
@@ -311,7 +347,18 @@ def sign_payout_recover(get_tx_func, payee_wif, rawtx,
 
 def sign_change_recover(get_tx_func, payer_wif, rawtx,
                         deposit_script_hex, spend_secret):
-    # FIXME add doc string
+    """ Sign change recover transaction.
+
+    Args:
+        get_tx_func (function): Function (txid) -> matching raw transaction.
+        payer_wif (str): Payer wif used for signing.
+        rawtx (str): Change raw transaction to be signed.
+        deposit_script_hex (str): Matching deposit script for transaction.
+        spend_secret (str): Deposit spend secret to recover change.
+
+    Return:
+        Signed change raw transaction.
+    """
     validate_deposit_script(deposit_script_hex)
     return _sign_deposit_recover(
         get_tx_func, payer_wif, rawtx,
@@ -320,7 +367,17 @@ def sign_change_recover(get_tx_func, payer_wif, rawtx,
 
 
 def sign_expire_recover(get_tx_func, payer_wif, rawtx, deposit_script_hex):
-    # FIXME add doc string
+    """ Sign expire recover transaction.
+
+    Args:
+        get_tx_func (function): Function (txid) -> matching raw transaction.
+        payer_wif (str): Payer wif used for signing.
+        rawtx (str): Expire raw transaction to be signed.
+        deposit_script_hex (str): Matching deposit script for transaction.
+
+    Return:
+        Signed expire raw transaction.
+    """
     validate_deposit_script(deposit_script_hex)
     return _sign_deposit_recover(
         get_tx_func, payer_wif, rawtx, deposit_script_hex, "expire", None
@@ -503,10 +560,10 @@ class _AbsDepositScript(ScriptType):
         existing_script = kwargs.get("existing_script")
 
         # validate existing script
-        reference_script_hex = compile_commit_scriptsig(
+        reference_script_hex = _compile_commit_scriptsig(
             "deadbeef", "deadbeef", b2h(self.script)
         )
-        validate(reference_script_hex, b2h(existing_script))
+        _validate(reference_script_hex, b2h(existing_script))
 
         # check provided payer signature
         try:
@@ -582,3 +639,49 @@ class _DepositScriptHandler():
 
     def __exit__(self, type, value, traceback):
         SUBCLASSES.pop(0)
+
+
+def _parse_sequence_value(opcode, data, disassembled):
+    value = None
+    if opcode == 0:
+        value = 0
+    elif 0 < opcode < 76:  # get from data bytes
+        value = tools.int_from_script_bytes(data)
+    elif 80 < opcode < 97:  # OP_1 - OP_16
+        value = opcode - 80
+    if not (MAX_SEQUENCE >= value >= 0):
+        raise InvalidSequenceValue(disassembled)
+    return value
+
+
+def _get_word(script_bin, index):
+    pc = 0
+    i = 0
+    while pc < len(script_bin) and i <= index:
+        opcode, data, pc = tools.get_opcode(script_bin, pc)
+        i += 1
+    if i != index + 1:
+        raise ValueError(index)
+    return opcode, data, tools.disassemble_for_opcode_data(opcode, data)
+
+
+def _validate(reference_script_hex, untrusted_script_hex):
+    ref_script_bin = h2b(reference_script_hex)
+    untrusted_script_bin = h2b(untrusted_script_hex)
+    r_pc = 0
+    u_pc = 0
+    while r_pc < len(ref_script_bin) and u_pc < len(untrusted_script_bin):
+        r_opcode, r_data, r_pc = tools.get_opcode(ref_script_bin, r_pc)
+        u_opcode, u_data, u_pc = tools.get_opcode(untrusted_script_bin, u_pc)
+        if r_data is not None and b2h(r_data) == "deadbeef":
+            continue  # placeholder for expected variable
+        if r_opcode != u_opcode or r_data != u_data:
+            raise InvalidScript(b2h(untrusted_script_bin))
+    if r_pc != len(ref_script_bin) or u_pc != len(untrusted_script_bin):
+        raise InvalidScript(b2h(untrusted_script_bin))
+
+
+def _compile_commit_scriptsig(payer_sig, payee_sig, deposit_script_hex):
+    validate_deposit_script(deposit_script_hex)
+    sig_asm = COMMIT_SCRIPTSIG.format(payer_sig=payer_sig, payee_sig=payee_sig)
+    return b2h(tools.compile("{0} {1}".format(sig_asm, deposit_script_hex)))

@@ -25,7 +25,7 @@ class TestScripts(unittest.TestCase):
             reference_script_hex = scripts.compile_deposit_script(
                 "deadbeef", "deadbeef", "deadbeef", "f483"
             )
-            scripts.validate(reference_script_hex, deposit_script_hex)
+            scripts._validate(reference_script_hex, deposit_script_hex)
         self.assertRaises(scripts.InvalidScript, function)
 
     def test_validate_incorrect_length(self):
@@ -35,7 +35,7 @@ class TestScripts(unittest.TestCase):
             reference_script_hex = scripts.compile_deposit_script(
                 "deadbeef", "deadbeef", "deadbeef", "deadbeef"
             )
-            scripts.validate(reference_script_hex, deposit_script_hex)
+            scripts._validate(reference_script_hex, deposit_script_hex)
         self.assertRaises(scripts.InvalidScript, function)
 
     def test_get_spend_secret_bad_rawtx(self):
@@ -166,8 +166,8 @@ class TestScripts(unittest.TestCase):
         deposit_script_hex = FIXTURES["commit_scriptsig"]["deposit_script_hex"]
         payer_sig = FIXTURES["commit_scriptsig"]["payer_sig"]
         payee_sig = FIXTURES["commit_scriptsig"]["payee_sig"]
-        scriptsig = scripts.compile_commit_scriptsig(payer_sig, payee_sig,
-                                                     deposit_script_hex)
+        scriptsig = scripts._compile_commit_scriptsig(payer_sig, payee_sig,
+                                                      deposit_script_hex)
         self.assertEqual(scriptsig, FIXTURES["commit_scriptsig"]["scriptsig"])
 
     def test_sign_deposit(self):
