@@ -30,3 +30,12 @@ def to_satoshis(btc_quantity):
 
 def bytestoint(data):
     return int(codecs.encode(data, 'hex_codec'), 16)
+
+
+def load_tx(get_tx_func, rawtx):
+    tx = Tx.from_hex(rawtx)
+    # FIXME batch load to reduce traffic or better yet remove need altogether
+    for txin in tx.txs_in:
+        utxo_tx = Tx.from_hex(get_tx_func(b2h_rev(txin.previous_hash)))
+        tx.unspents.append(utxo_tx.txs_out[txin.previous_index])
+    return tx

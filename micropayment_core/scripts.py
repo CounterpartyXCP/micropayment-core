@@ -14,7 +14,8 @@ from pycoin.tx.pay_to.ScriptType import ScriptType
 from pycoin.tx.script.check_signature import parse_signature_blob
 from pycoin.tx.script.der import UnexpectedDER
 from pycoin.tx.pay_to import build_hash160_lookup, build_p2sh_lookup
-from pycoin.serialize import b2h, h2b, b2h_rev
+from pycoin.serialize import b2h, h2b
+from .util import load_tx
 
 
 MAX_SEQUENCE = 0x0000FFFF
@@ -254,7 +255,7 @@ def sign_deposit(get_tx_func, payer_wif, rawtx):
     Return:
         Signed deposit raw transaction.
     """
-    tx = _load_tx(get_tx_func, rawtx)
+    tx = load_tx(get_tx_func, rawtx)
     key = Key.from_text(payer_wif)
     tx.sign(build_hash160_lookup([key.secret_exponent()]))
     return tx.as_hex()
@@ -273,7 +274,7 @@ def sign_created_commit(get_tx_func, payer_wif, rawtx, deposit_script_hex):
         Partially signed commit raw transaction.
     """
     validate_deposit_script(deposit_script_hex)
-    tx = _load_tx(get_tx_func, rawtx)
+    tx = load_tx(get_tx_func, rawtx)
     expire_time = get_deposit_expire_time(deposit_script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(payer_wif, deposit_script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(payer_wif, deposit_script_hex)
@@ -296,7 +297,7 @@ def sign_finalize_commit(get_tx_func, payee_wif, rawtx, deposit_script_hex):
         Fully signed commit raw transaction.
     """
     validate_deposit_script(deposit_script_hex)
-    tx = _load_tx(get_tx_func, rawtx)
+    tx = load_tx(get_tx_func, rawtx)
     expire_time = get_deposit_expire_time(deposit_script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(payee_wif, deposit_script_hex)
     with _DepositScriptHandler(expire_time):
@@ -384,18 +385,9 @@ def sign_expire_recover(get_tx_func, payer_wif, rawtx, deposit_script_hex):
     )
 
 
-def _load_tx(get_tx_func, rawtx):
-    tx = Tx.from_hex(rawtx)
-    # FIXME batch load to reduce traffic or better yet remove need altogether
-    for txin in tx.txs_in:
-        utxo_tx = Tx.from_hex(get_tx_func(b2h_rev(txin.previous_hash)))
-        tx.unspents.append(utxo_tx.txs_out[txin.previous_index])
-    return tx
-
-
 def _sign_deposit_recover(get_tx_func, wif, rawtx, script_hex,
                           spend_type, spend_secret):
-    tx = _load_tx(get_tx_func, rawtx)
+    tx = load_tx(get_tx_func, rawtx)
     expire_time = get_deposit_expire_time(script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(wif, script_hex)
     with _DepositScriptHandler(expire_time):
@@ -407,7 +399,7 @@ def _sign_deposit_recover(get_tx_func, wif, rawtx, script_hex,
 
 def _sign_commit_recover(get_tx_func, wif, rawtx, script_hex, spend_type,
                          spend_secret, revoke_secret):
-    tx = _load_tx(get_tx_func, rawtx)
+    tx = load_tx(get_tx_func, rawtx)
     delay_time = get_commit_delay_time(script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(wif, script_hex)
     with _CommitScriptHandler(delay_time):
