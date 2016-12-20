@@ -9,7 +9,7 @@ exec(open('micropayment_core/version.py').read())  # load __version__
 
 
 setup(
-    name='micropayment_core',
+    name='micropayment-core',
     scripts=[],
     description="Micropayment core utils for counterparty assets.",
     long_description=open("README.rst").read(),

@@ -361,6 +361,9 @@ def sign_change_recover(get_tx_func, payer_wif, rawtx,
         Signed change raw transaction.
     """
     validate_deposit_script(deposit_script_hex)
+    spend_secret_hash = get_deposit_spend_secret_hash(deposit_script_hex)
+    provided_spend_secret_hash = b2h(encoding.hash160(h2b(spend_secret)))
+    assert provided_spend_secret_hash == spend_secret_hash
     return _sign_deposit_recover(
         get_tx_func, payer_wif, rawtx,
         deposit_script_hex, "change", spend_secret
