@@ -112,6 +112,12 @@ def validate_commit_script(commit_script_hex, validate_delay_time=True):
         get_commit_delay_time(commit_script_hex)  # has valid sequence value
 
 
+def _validate_payout_scriptsig(payout_script_hex, commit_script_hex):
+    reference_script_hex = _compile_payout_scriptsig("deadbeef", "deadbeef",
+                                                     commit_script_hex)
+    _validate(reference_script_hex, payout_script_hex)
+
+
 def get_spend_secret(payout_rawtx, commit_script_hex):
     """ Get spend secret for given payout transaction.
 
@@ -126,6 +132,10 @@ def get_spend_secret(payout_rawtx, commit_script_hex):
     commit_script_bin = h2b(commit_script_hex)
     tx = Tx.from_hex(payout_rawtx)
     spend_script_bin = tx.txs_in[0].script
+    try:
+        _validate_payout_scriptsig(b2h(spend_script_bin), commit_script_hex)
+    except InvalidScript:
+        return None
     try:
         opcode, data, disassembled = _get_word(spend_script_bin, 3)
         if data == commit_script_bin:  # is payout tx
@@ -341,6 +351,7 @@ def sign_payout_recover(get_tx_func, payee_wif, rawtx,
         Signed payout raw transaction.
     """
     validate_commit_script(commit_script_hex)
+    # FIXME check spend secret matches commit script
     return _sign_commit_recover(get_tx_func, payee_wif, rawtx,
                                 commit_script_hex, "payout",
                                 spend_secret, None)
@@ -674,6 +685,12 @@ def _validate(reference_script_hex, untrusted_script_hex):
             raise InvalidScript(b2h(untrusted_script_bin))
     if r_pc != len(ref_script_bin) or u_pc != len(untrusted_script_bin):
         raise InvalidScript(b2h(untrusted_script_bin))
+
+
+def _compile_payout_scriptsig(sig, spend_secret, commit_script_hex):
+    validate_commit_script(commit_script_hex)
+    sig_asm = PAYOUT_SCRIPTSIG.format(sig=sig, spend_secret=spend_secret)
+    return b2h(tools.compile("{0} {1}".format(sig_asm, commit_script_hex)))
 
 
 def _compile_commit_scriptsig(payer_sig, payee_sig, deposit_script_hex):

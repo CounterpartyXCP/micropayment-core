@@ -38,6 +38,13 @@ class TestScripts(unittest.TestCase):
             scripts._validate(reference_script_hex, deposit_script_hex)
         self.assertRaises(scripts.InvalidScript, function)
 
+    def test_get_spend_secret_revoke_rawtx(self):
+        rr = FIXTURES["sign"]["revoke_recover"]
+        revoke_rawtx = rr["expected"]
+        commit_script_hex = rr["input"]["commit_script_hex"]
+        result = scripts.get_spend_secret(revoke_rawtx, commit_script_hex)
+        self.assertEqual(result, None)
+
     def test_get_spend_secret_bad_rawtx(self):
         bad_rawtx = FIXTURES["payout"]["bad_rawtx"]
         commit_script_hex = FIXTURES["payout"]["commit_script_hex"]
