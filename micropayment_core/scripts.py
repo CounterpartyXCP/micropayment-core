@@ -16,6 +16,7 @@ from pycoin.tx.script.der import UnexpectedDER
 from pycoin.tx.pay_to import build_hash160_lookup, build_p2sh_lookup
 from pycoin.serialize import b2h, h2b
 from .util import load_tx
+from .util import xxx_capture_out
 
 
 MAX_SEQUENCE = 0x0000FFFF
@@ -267,7 +268,8 @@ def sign_deposit(get_tx_func, payer_wif, rawtx):
     """
     tx = load_tx(get_tx_func, rawtx)
     key = Key.from_text(payer_wif)
-    tx.sign(build_hash160_lookup([key.secret_exponent()]))
+    with xxx_capture_out():
+        tx.sign(build_hash160_lookup([key.secret_exponent()]))
     return tx.as_hex()
 
 
@@ -289,8 +291,9 @@ def sign_created_commit(get_tx_func, payer_wif, rawtx, deposit_script_hex):
     hash160_lookup, p2sh_lookup = _make_lookups(payer_wif, deposit_script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(payer_wif, deposit_script_hex)
     with _DepositScriptHandler(expire_time):
-        tx.sign(hash160_lookup, p2sh_lookup=p2sh_lookup,
-                spend_type="create_commit", spend_secret=None)
+        with xxx_capture_out():
+            tx.sign(hash160_lookup, p2sh_lookup=p2sh_lookup,
+                    spend_type="create_commit", spend_secret=None)
     return tx.as_hex()
 
 
@@ -311,8 +314,9 @@ def sign_finalize_commit(get_tx_func, payee_wif, rawtx, deposit_script_hex):
     expire_time = get_deposit_expire_time(deposit_script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(payee_wif, deposit_script_hex)
     with _DepositScriptHandler(expire_time):
-        tx.sign(hash160_lookup, p2sh_lookup=p2sh_lookup,
-                spend_type="finalize_commit", spend_secret=None)
+        with xxx_capture_out():
+            tx.sign(hash160_lookup, p2sh_lookup=p2sh_lookup,
+                    spend_type="finalize_commit", spend_secret=None)
     assert(tx.bad_signature_count() == 0)
     return tx.as_hex()
 
@@ -405,8 +409,9 @@ def _sign_deposit_recover(get_tx_func, wif, rawtx, script_hex,
     expire_time = get_deposit_expire_time(script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(wif, script_hex)
     with _DepositScriptHandler(expire_time):
-        tx.sign(hash160_lookup, p2sh_lookup=p2sh_lookup,
-                spend_type=spend_type, spend_secret=spend_secret)
+        with xxx_capture_out():
+            tx.sign(hash160_lookup, p2sh_lookup=p2sh_lookup,
+                    spend_type=spend_type, spend_secret=spend_secret)
     assert(tx.bad_signature_count() == 0)
     return tx.as_hex()
 
@@ -417,9 +422,10 @@ def _sign_commit_recover(get_tx_func, wif, rawtx, script_hex, spend_type,
     delay_time = get_commit_delay_time(script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(wif, script_hex)
     with _CommitScriptHandler(delay_time):
-        tx.sign(hash160_lookup, p2sh_lookup=p2sh_lookup,
-                spend_type=spend_type, spend_secret=spend_secret,
-                revoke_secret=revoke_secret)
+        with xxx_capture_out():
+            tx.sign(hash160_lookup, p2sh_lookup=p2sh_lookup,
+                    spend_type=spend_type, spend_secret=spend_secret,
+                    revoke_secret=revoke_secret)
     assert(tx.bad_signature_count() == 0)
     return tx.as_hex()
 
@@ -613,7 +619,7 @@ class _AbsDepositScript(ScriptType):
         return solve_method(**kwargs)
 
 
-class _CommitScriptHandler():
+class _CommitScriptHandler(object):
 
     def __init__(self, delay_time):
         class CommitScript(_AbsCommitScript):
@@ -630,7 +636,7 @@ class _CommitScriptHandler():
         SUBCLASSES.pop(0)
 
 
-class _DepositScriptHandler():
+class _DepositScriptHandler(object):
 
     def __init__(self, expire_time):
         class DepositScript(_AbsDepositScript):

@@ -4,6 +4,11 @@
 
 
 import codecs
+import contextlib
+import sys
+from io import StringIO
+
+
 from pycoin.tx import Tx
 from pycoin.serialize import b2h
 from pycoin.serialize import h2b
@@ -39,3 +44,16 @@ def load_tx(get_tx_func, rawtx):
         utxo_tx = Tx.from_hex(get_tx_func(b2h_rev(txin.previous_hash)))
         tx.unspents.append(utxo_tx.txs_out[txin.previous_index])
     return tx
+
+
+@contextlib.contextmanager
+def xxx_capture_out():
+    oldout, olderr = sys.stdout, sys.stderr
+    try:
+        out = [StringIO(), StringIO()]
+        sys.stdout, sys.stderr = out
+        yield out
+    finally:
+        sys.stdout, sys.stderr = oldout, olderr
+        out[0] = out[0].getvalue()
+        out[1] = out[1].getvalue()
