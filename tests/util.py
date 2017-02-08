@@ -29,6 +29,10 @@ class TestUtils(unittest.TestCase):
         satoshis = util.to_satoshis(1.0)
         self.assertEqual(satoshis, 100000000)
 
+        amounts = [0.00029371, 1.0, 0.01, 0.01]
+        amounts_sum = sum(util.to_satoshis(x) for x in amounts)
+        self.assertEqual(amounts_sum, 102029371)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,6 +6,7 @@
 import codecs
 import contextlib
 import sys
+from decimal import Decimal
 from io import StringIO
 
 
@@ -30,7 +31,7 @@ def hash160hex(hexdata):
 
 
 def to_satoshis(btc_quantity):
-    return int(btc_quantity * 100000000)
+    return int(Decimal(str(btc_quantity)) * Decimal("100000000"))
 
 
 def bytestoint(data):
