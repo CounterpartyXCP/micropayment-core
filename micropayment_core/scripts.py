@@ -239,7 +239,7 @@ def compile_commit_script(payer_pubkey, payee_pubkey, spend_secret_hash,
         payer_pubkey (str): Hex encoded public key in sec format.
         payee_pubkey (str): Hex encoded public key in sec format.
         spend_secret_hash (str): Hex encoded hash160 of spend secret.
-        revoke_secret_hash (str): TODO
+        revoke_secret_hash (str): Hex encoded hash160 of commit revoke secret.
         delay_time (int): Commit delay time in blocks given as int.
 
     Return:
@@ -355,7 +355,6 @@ def sign_payout_recover(get_tx_func, payee_wif, rawtx,
         Signed payout raw transaction.
     """
     validate_commit_script(commit_script_hex)
-    # FIXME check spend secret matches commit script
     return _sign_commit_recover(get_tx_func, payee_wif, rawtx,
                                 commit_script_hex, "payout",
                                 spend_secret, None)

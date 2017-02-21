@@ -62,7 +62,7 @@ def pem_to_privkey(pem):
         str: Hex encoded 32Byte secret exponent
     """
     sk = SigningKey.from_pem(pem)
-    # FIXME assert is secp256k1 private key
+    assert(sk.curve.openssl_name == 'secp256k1')
     return b2h(sk.to_string())
 
 
@@ -88,7 +88,7 @@ def der_to_privkey(der):
         str: Hex encoded 32Byte secret exponent
     """
     sk = SigningKey.from_der(der)
-    # FIXME assert is secp256k1 private key
+    assert(sk.curve.openssl_name == 'secp256k1')
     return b2h(sk.to_string())
 
 
