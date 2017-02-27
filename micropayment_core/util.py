@@ -19,6 +19,7 @@ from pycoin.ui import address_for_pay_to_script
 
 
 def gettxid(rawtx):
+    Tx.ALLOW_SEGWIT = False  # XXX so so bad!!
     return b2h_rev(Tx.from_hex(rawtx).hash())
 
 
@@ -38,12 +39,19 @@ def bytestoint(data):
     return int(codecs.encode(data, 'hex_codec'), 16)
 
 
-def load_tx(get_tx_func, rawtx):
+def load_tx(get_txs_func, rawtx):
+    Tx.ALLOW_SEGWIT = False
     tx = Tx.from_hex(rawtx)
-    # TODO batch load to reduce traffic or better yet remove need altogether
+
+    unspent_info = {}  # txid -> index
     for txin in tx.txs_in:
-        utxo_tx = Tx.from_hex(get_tx_func(b2h_rev(txin.previous_hash)))
-        tx.unspents.append(utxo_tx.txs_out[txin.previous_index])
+        unspent_info[b2h_rev(txin.previous_hash)] = txin.previous_index
+    utxo_rawtxs = get_txs_func(list(unspent_info.keys()))
+
+    for utxo_txid, utxo_rawtx in utxo_rawtxs.items():
+        utxo_tx = Tx.from_hex(utxo_rawtx)
+        prev_index = unspent_info[utxo_txid]
+        tx.unspents.append(utxo_tx.txs_out[prev_index])
     return tx
 
 

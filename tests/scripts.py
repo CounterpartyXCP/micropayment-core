@@ -7,8 +7,11 @@ from micropayment_core import util
 FIXTURES = json.load(open("tests/fixtures.json"))
 
 
-def _get_tx_func(txid):
-    return FIXTURES["transactions"][txid]
+def _get_txs_func(txids):
+    result = {}
+    for txid in txids:
+        result[txid] = FIXTURES["transactions"][txid]
+    return result
 
 
 class TestScripts(unittest.TestCase):
@@ -180,19 +183,19 @@ class TestScripts(unittest.TestCase):
 
     def test_sign_deposit(self):
         rawtx = scripts.sign_deposit(
-            _get_tx_func, **FIXTURES["sign"]["deposit"]["input"]
+            _get_txs_func, **FIXTURES["sign"]["deposit"]["input"]
         )
         self.assertTrue(rawtx, FIXTURES["sign"]["deposit"]["expected"])
 
     def test_sign_created_commit(self):
         rawtx = scripts.sign_created_commit(
-            _get_tx_func, **FIXTURES["sign"]["created_commit"]["input"]
+            _get_txs_func, **FIXTURES["sign"]["created_commit"]["input"]
         )
         self.assertTrue(rawtx, FIXTURES["sign"]["created_commit"]["expected"])
 
     def test_sign_finalize_commit(self):
         rawtx = scripts.sign_finalize_commit(
-            _get_tx_func, **FIXTURES["sign"]["finalize_commit"]["input"]
+            _get_txs_func, **FIXTURES["sign"]["finalize_commit"]["input"]
         )
         self.assertTrue(rawtx, FIXTURES["sign"]["finalize_commit"]["expected"])
 
@@ -200,51 +203,51 @@ class TestScripts(unittest.TestCase):
 
         def function():
             kwargs = FIXTURES["sign"]["finalize_commit_bad_sigvalue"]["input"]
-            scripts.sign_finalize_commit(_get_tx_func, **kwargs)
+            scripts.sign_finalize_commit(_get_txs_func, **kwargs)
         self.assertRaises(scripts.InvalidPayerSignature, function)
 
     def test_sign_finalize_commit_bad_sigformat(self):
 
         def function():
             kwargs = FIXTURES["sign"]["finalize_commit_bad_sigformat"]["input"]
-            scripts.sign_finalize_commit(_get_tx_func, **kwargs)
+            scripts.sign_finalize_commit(_get_txs_func, **kwargs)
         self.assertRaises(scripts.InvalidPayerSignature, function)
 
     def test_sign_finalize_commit_unsigned(self):
 
         def function():
             kwargs = FIXTURES["sign"]["finalize_commit_unsigned"]["input"]
-            scripts.sign_finalize_commit(_get_tx_func, **kwargs)
+            scripts.sign_finalize_commit(_get_txs_func, **kwargs)
         self.assertRaises(scripts.InvalidScript, function)  # bad scriptsig
 
     def test_sign_finalize_commit_bad_script(self):
 
         def function():
             kwargs = FIXTURES["sign"]["finalize_commit_bad_script"]["input"]
-            scripts.sign_finalize_commit(_get_tx_func, **kwargs)
+            scripts.sign_finalize_commit(_get_txs_func, **kwargs)
         self.assertRaises(ValueError, function)  # from  p2sh lookup
 
     def test_sign_revoke_recover(self):
         rawtx = scripts.sign_revoke_recover(
-            _get_tx_func, **FIXTURES["sign"]["revoke_recover"]["input"]
+            _get_txs_func, **FIXTURES["sign"]["revoke_recover"]["input"]
         )
         self.assertTrue(rawtx, FIXTURES["sign"]["revoke_recover"]["expected"])
 
     def test_sign_payout_recover(self):
         rawtx = scripts.sign_payout_recover(
-            _get_tx_func, **FIXTURES["sign"]["payout_recover"]["input"]
+            _get_txs_func, **FIXTURES["sign"]["payout_recover"]["input"]
         )
         self.assertTrue(rawtx, FIXTURES["sign"]["payout_recover"]["expected"])
 
     def test_sign_change_recover(self):
         rawtx = scripts.sign_change_recover(
-            _get_tx_func, **FIXTURES["sign"]["change_recover"]["input"]
+            _get_txs_func, **FIXTURES["sign"]["change_recover"]["input"]
         )
         self.assertTrue(rawtx, FIXTURES["sign"]["change_recover"]["expected"])
 
     def test_sign_expire_recover(self):
         rawtx = scripts.sign_expire_recover(
-            _get_tx_func, **FIXTURES["sign"]["expire_recover"]["input"]
+            _get_txs_func, **FIXTURES["sign"]["expire_recover"]["input"]
         )
         self.assertTrue(rawtx, FIXTURES["sign"]["expire_recover"]["expected"])
 

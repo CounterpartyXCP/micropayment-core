@@ -251,29 +251,29 @@ def compile_commit_script(payer_pubkey, payee_pubkey, spend_secret_hash,
     return b2h(tools.compile(script_asm))
 
 
-def sign_deposit(get_tx_func, payer_wif, rawtx):
+def sign_deposit(get_txs_func, payer_wif, rawtx):
     """ Sign deposit transaction.
 
     Args:
-        get_tx_func (function): Function (txid) -> matching raw transaction.
+        get_txs_func (function): txid list -> matching raw transactions.
         payer_wif (str): Payer wif used for signing.
         rawtx (str): Deposit raw transaction to be signed.
 
     Return:
         Signed deposit raw transaction.
     """
-    tx = load_tx(get_tx_func, rawtx)
+    tx = load_tx(get_txs_func, rawtx)
     key = Key.from_text(payer_wif)
     with xxx_capture_out():
         tx.sign(build_hash160_lookup([key.secret_exponent()]))
     return tx.as_hex()
 
 
-def sign_created_commit(get_tx_func, payer_wif, rawtx, deposit_script_hex):
+def sign_created_commit(get_txs_func, payer_wif, rawtx, deposit_script_hex):
     """ Sign created commit transaction.
 
     Args:
-        get_tx_func (function): Function (txid) -> matching raw transaction.
+        get_txs_func (function): txid list -> matching raw transactions.
         payer_wif (str): Payer wif used for signing.
         rawtx (str): Commit raw transaction to be signed.
         deposit_script_hex (str): Matching deposit script for given commit.
@@ -282,7 +282,7 @@ def sign_created_commit(get_tx_func, payer_wif, rawtx, deposit_script_hex):
         Partially signed commit raw transaction.
     """
     validate_deposit_script(deposit_script_hex)
-    tx = load_tx(get_tx_func, rawtx)
+    tx = load_tx(get_txs_func, rawtx)
     expire_time = get_deposit_expire_time(deposit_script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(payer_wif, deposit_script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(payer_wif, deposit_script_hex)
@@ -293,11 +293,11 @@ def sign_created_commit(get_tx_func, payer_wif, rawtx, deposit_script_hex):
     return tx.as_hex()
 
 
-def sign_finalize_commit(get_tx_func, payee_wif, rawtx, deposit_script_hex):
+def sign_finalize_commit(get_txs_func, payee_wif, rawtx, deposit_script_hex):
     """ Finalize commit transaction signature.
 
     Args:
-        get_tx_func (function): Function (txid) -> matching raw transaction.
+        get_txs_func (function): txid list -> matching raw transactions.
         payee_wif (str): Payee wif used for signing.
         rawtx (str): Commit raw transaction to be signed.
         deposit_script_hex (str): Matching deposit script for given commit.
@@ -306,7 +306,7 @@ def sign_finalize_commit(get_tx_func, payee_wif, rawtx, deposit_script_hex):
         Fully signed commit raw transaction.
     """
     validate_deposit_script(deposit_script_hex)
-    tx = load_tx(get_tx_func, rawtx)
+    tx = load_tx(get_txs_func, rawtx)
     expire_time = get_deposit_expire_time(deposit_script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(payee_wif, deposit_script_hex)
     with _DepositScriptHandler(expire_time):
@@ -317,12 +317,12 @@ def sign_finalize_commit(get_tx_func, payee_wif, rawtx, deposit_script_hex):
     return tx.as_hex()
 
 
-def sign_revoke_recover(get_tx_func, payer_wif, rawtx,
+def sign_revoke_recover(get_txs_func, payer_wif, rawtx,
                         commit_script_hex, revoke_secret):
     """ Sign revoke recover transaction.
 
     Args:
-        get_tx_func (function): Function (txid) -> matching raw transaction.
+        get_txs_func (function): txid list -> matching raw transactions.
         payer_wif (str): Payer wif used for signing.
         rawtx (str): Revoke raw transaction to be signed.
         commit_script_hex (str): Matching commit script for given transaction.
@@ -332,17 +332,17 @@ def sign_revoke_recover(get_tx_func, payer_wif, rawtx,
         Signed revoke raw transaction.
     """
     validate_commit_script(commit_script_hex)
-    return _sign_commit_recover(get_tx_func, payer_wif, rawtx,
+    return _sign_commit_recover(get_txs_func, payer_wif, rawtx,
                                 commit_script_hex, "revoke",
                                 None, revoke_secret)
 
 
-def sign_payout_recover(get_tx_func, payee_wif, rawtx,
+def sign_payout_recover(get_txs_func, payee_wif, rawtx,
                         commit_script_hex, spend_secret):
     """ Sign payout recover transaction.
 
     Args:
-        get_tx_func (function): Function (txid) -> matching raw transaction.
+        get_txs_func (function): txid list -> matching raw transactions.
         payee_wif (str): Payee wif used for signing.
         rawtx (str): Payout raw transaction to be signed.
         commit_script_hex (str): Matching commit script for given transaction.
@@ -351,17 +351,17 @@ def sign_payout_recover(get_tx_func, payee_wif, rawtx,
         Signed payout raw transaction.
     """
     validate_commit_script(commit_script_hex)
-    return _sign_commit_recover(get_tx_func, payee_wif, rawtx,
+    return _sign_commit_recover(get_txs_func, payee_wif, rawtx,
                                 commit_script_hex, "payout",
                                 spend_secret, None)
 
 
-def sign_change_recover(get_tx_func, payer_wif, rawtx,
+def sign_change_recover(get_txs_func, payer_wif, rawtx,
                         deposit_script_hex, spend_secret):
     """ Sign change recover transaction.
 
     Args:
-        get_tx_func (function): Function (txid) -> matching raw transaction.
+        get_txs_func (function): txid list -> matching raw transactions.
         payer_wif (str): Payer wif used for signing.
         rawtx (str): Change raw transaction to be signed.
         deposit_script_hex (str): Matching deposit script for transaction.
@@ -375,16 +375,16 @@ def sign_change_recover(get_tx_func, payer_wif, rawtx,
     provided_spend_secret_hash = b2h(encoding.hash160(h2b(spend_secret)))
     assert provided_spend_secret_hash == spend_secret_hash
     return _sign_deposit_recover(
-        get_tx_func, payer_wif, rawtx,
+        get_txs_func, payer_wif, rawtx,
         deposit_script_hex, "change", spend_secret
     )
 
 
-def sign_expire_recover(get_tx_func, payer_wif, rawtx, deposit_script_hex):
+def sign_expire_recover(get_txs_func, payer_wif, rawtx, deposit_script_hex):
     """ Sign expire recover transaction.
 
     Args:
-        get_tx_func (function): Function (txid) -> matching raw transaction.
+        get_txs_func (function): txid list -> matching raw transactions.
         payer_wif (str): Payer wif used for signing.
         rawtx (str): Expire raw transaction to be signed.
         deposit_script_hex (str): Matching deposit script for transaction.
@@ -394,13 +394,13 @@ def sign_expire_recover(get_tx_func, payer_wif, rawtx, deposit_script_hex):
     """
     validate_deposit_script(deposit_script_hex)
     return _sign_deposit_recover(
-        get_tx_func, payer_wif, rawtx, deposit_script_hex, "expire", None
+        get_txs_func, payer_wif, rawtx, deposit_script_hex, "expire", None
     )
 
 
-def _sign_deposit_recover(get_tx_func, wif, rawtx, script_hex,
+def _sign_deposit_recover(get_txs_func, wif, rawtx, script_hex,
                           spend_type, spend_secret):
-    tx = load_tx(get_tx_func, rawtx)
+    tx = load_tx(get_txs_func, rawtx)
     expire_time = get_deposit_expire_time(script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(wif, script_hex)
     with _DepositScriptHandler(expire_time):
@@ -411,9 +411,9 @@ def _sign_deposit_recover(get_tx_func, wif, rawtx, script_hex,
     return tx.as_hex()
 
 
-def _sign_commit_recover(get_tx_func, wif, rawtx, script_hex, spend_type,
+def _sign_commit_recover(get_txs_func, wif, rawtx, script_hex, spend_type,
                          spend_secret, revoke_secret):
-    tx = load_tx(get_tx_func, rawtx)
+    tx = load_tx(get_txs_func, rawtx)
     delay_time = get_commit_delay_time(script_hex)
     hash160_lookup, p2sh_lookup = _make_lookups(wif, script_hex)
     with _CommitScriptHandler(delay_time):
