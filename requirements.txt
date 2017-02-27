@@ -1,2 +1,2 @@
-pycoin == 0.70
+pycoin == 0.76
 ecdsa >= 0.13

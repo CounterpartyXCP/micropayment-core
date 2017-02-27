@@ -15,9 +15,7 @@ class TestUtils(unittest.TestCase):
 
     def test_script2address(self):
         for address, script_hex in FIXTURES["scripts"].items():
-            result = util.script_address(
-                script_hex, netcode="XTN"
-            )
+            result = util.script_address(script_hex, netcode="XTN")
             self.assertEqual(result, address)
 
     def test_hash160(self):

@@ -114,8 +114,9 @@ def validate_commit_script(commit_script_hex, validate_delay_time=True):
 
 
 def _validate_payout_scriptsig(payout_script_hex, commit_script_hex):
-    reference_script_hex = _compile_payout_scriptsig("deadbeef", "deadbeef",
-                                                     commit_script_hex)
+    reference_script_hex = _compile_payout_scriptsig(
+        "deadbeef", "deadbeef", commit_script_hex
+    )
     _validate(reference_script_hex, payout_script_hex)
 
 
@@ -130,82 +131,77 @@ def get_spend_secret(payout_rawtx, commit_script_hex):
         str: Hex spend secret or None if not a payout for given commit script.
     """
     validate_commit_script(commit_script_hex)
-    commit_script_bin = h2b(commit_script_hex)
     tx = Tx.from_hex(payout_rawtx)
     spend_script_bin = tx.txs_in[0].script
     try:
         _validate_payout_scriptsig(b2h(spend_script_bin), commit_script_hex)
     except InvalidScript:
         return None
-    try:
-        opcode, data, disassembled = _get_word(spend_script_bin, 3)
-        if data == commit_script_bin:  # is payout tx
-            opcode, spend_secret, disassembled = _get_word(spend_script_bin, 1)
-            return b2h(spend_secret)
-    except ValueError:
-        return None
+    opcode, data, disassembled = get_word(spend_script_bin, 3)
+    opcode, spend_secret, disassembled = get_word(spend_script_bin, 1)
+    return b2h(spend_secret)
 
 
 def get_commit_payer_pubkey(script_hex):
     """ Return payer pubkey for given commit script. """
     validate_commit_script(script_hex)
-    opcode, data, disassembled = _get_word(h2b(script_hex), 13)
+    opcode, data, disassembled = get_word(h2b(script_hex), 13)
     return b2h(data)
 
 
 def get_commit_payee_pubkey(script_hex):
     """ Return payee pubkey for given commit script. """
     validate_commit_script(script_hex)
-    opcode, data, disassembled = _get_word(h2b(script_hex), 7)
+    opcode, data, disassembled = get_word(h2b(script_hex), 7)
     return b2h(data)
 
 
 def get_commit_delay_time(script_hex):
     """ Return delay time for given commit script. """
     validate_commit_script(script_hex, validate_delay_time=False)
-    opcode, data, disassembled = _get_word(h2b(script_hex), 1)
+    opcode, data, disassembled = get_word(h2b(script_hex), 1)
     return _parse_sequence_value(opcode, data, disassembled)
 
 
 def get_commit_spend_secret_hash(script_hex):
     """ Return spend secret for given commit script. """
     validate_commit_script(script_hex)
-    opcode, data, disassembled = _get_word(h2b(script_hex), 5)
+    opcode, data, disassembled = get_word(h2b(script_hex), 5)
     return b2h(data)
 
 
 def get_commit_revoke_secret_hash(script_hex):
     """ Return revoke secret hash for given commit script. """
     validate_commit_script(script_hex)
-    opcode, data, disassembled = _get_word(h2b(script_hex), 11)
+    opcode, data, disassembled = get_word(h2b(script_hex), 11)
     return b2h(data)
 
 
 def get_deposit_payer_pubkey(script_hex):
     """ Return payer pubkey for given deposit script. """
     validate_deposit_script(script_hex)
-    opcode, data, disassembled = _get_word(h2b(script_hex), 2)
+    opcode, data, disassembled = get_word(h2b(script_hex), 2)
     return b2h(data)
 
 
 def get_deposit_payee_pubkey(script_hex):
     """ Return payee pubkey for given deposit script. """
     validate_deposit_script(script_hex)
-    opcode, data, disassembled = _get_word(h2b(script_hex), 3)
+    opcode, data, disassembled = get_word(h2b(script_hex), 3)
     return b2h(data)
 
 
 def get_deposit_expire_time(script_hex):
     """ Return expire time for given deposit script. """
     validate_deposit_script(script_hex, validate_expire_time=False)
-    opcode, data, disassembled = _get_word(h2b(script_hex), 14)
+    opcode, data, disassembled = get_word(h2b(script_hex), 14)
     return _parse_sequence_value(opcode, data, disassembled)
 
 
 def get_deposit_spend_secret_hash(script_hex):
     """ Return spend secret hash for given deposit script. """
     validate_deposit_script(script_hex)
-    opcode, data, disassembled = _get_word(h2b(script_hex), 9)
+    opcode, data, disassembled = get_word(h2b(script_hex), 9)
     return b2h(data)
 
 
@@ -437,7 +433,19 @@ def _make_lookups(wif, script_hex):
     return hash160_lookup, p2sh_lookup
 
 
-class _AbsCommitScript(ScriptType):
+class _AbsScript(ScriptType):
+
+    def _create_sig(self, secret_exponent, **kwargs):
+        signature_for_hash_type_f = kwargs.get("signature_for_hash_type_f")
+        signature_type = kwargs["signature_type"]
+        script_to_hash = kwargs["script_to_hash"]
+        return self._create_script_signature(
+            secret_exponent, signature_for_hash_type_f,
+            signature_type, script_to_hash
+        )
+
+
+class _AbsCommitScript(_AbsScript):
 
     def __init__(self, delay_time, spend_secret_hash,
                  payee_sec, payer_sec, revoke_secret_hash):
@@ -471,9 +479,8 @@ class _AbsCommitScript(ScriptType):
         spend_secret = kwargs["spend_secret"]
         private_key = hash160_lookup.get(encoding.hash160(self.payee_sec))
         secret_exponent, public_pair, compressed = private_key
-        sig = self._create_script_signature(
-            secret_exponent, kwargs["sign_value"], kwargs["signature_type"]
-        )
+
+        sig = self._create_sig(secret_exponent, **kwargs)
         return tools.compile(PAYOUT_SCRIPTSIG.format(
             sig=b2h(sig), spend_secret=spend_secret
         ))
@@ -483,9 +490,7 @@ class _AbsCommitScript(ScriptType):
         revoke_secret = kwargs["revoke_secret"]
         private_key = hash160_lookup.get(encoding.hash160(self.payer_sec))
         secret_exponent, public_pair, compressed = private_key
-        sig = self._create_script_signature(
-            secret_exponent, kwargs["sign_value"], kwargs["signature_type"]
-        )
+        sig = self._create_sig(secret_exponent, **kwargs)
         return tools.compile(REVOKE_SCRIPTSIG.format(
             sig=b2h(sig), revoke_secret=revoke_secret
         ))
@@ -499,7 +504,7 @@ class _AbsCommitScript(ScriptType):
         return solve_method(**kwargs)
 
 
-class _AbsDepositScript(ScriptType):
+class _AbsDepositScript(_AbsScript):
 
     def __init__(self, payer_sec, payee_sec, spend_secret_hash, expire_time):
         self.payer_sec = payer_sec
@@ -529,9 +534,7 @@ class _AbsDepositScript(ScriptType):
         hash160_lookup = kwargs["hash160_lookup"]
         private_key = hash160_lookup.get(encoding.hash160(self.payer_sec))
         secret_exponent, public_pair, compressed = private_key
-        sig = self._create_script_signature(
-            secret_exponent, kwargs["sign_value"], kwargs["signature_type"]
-        )
+        sig = self._create_sig(secret_exponent, **kwargs)
         return tools.compile(EXPIRE_SCRIPTSIG.format(sig=b2h(sig)))
 
     def solve_change(self, **kwargs):
@@ -539,9 +542,7 @@ class _AbsDepositScript(ScriptType):
         spend_secret = kwargs["spend_secret"]
         private_key = hash160_lookup.get(encoding.hash160(self.payer_sec))
         secret_exponent, public_pair, compressed = private_key
-        sig = self._create_script_signature(
-            secret_exponent, kwargs["sign_value"], kwargs["signature_type"]
-        )
+        sig = self._create_sig(secret_exponent, **kwargs)
         spend_secret_hash = get_deposit_spend_secret_hash(b2h(self.script))
         provided_spend_secret_hash = b2h(encoding.hash160(h2b(spend_secret)))
         assert(spend_secret_hash == provided_spend_secret_hash)
@@ -554,9 +555,7 @@ class _AbsDepositScript(ScriptType):
         hash160_lookup = kwargs["hash160_lookup"]
         private_key = hash160_lookup.get(encoding.hash160(self.payer_sec))
         secret_exponent, public_pair, compressed = private_key
-        sig = self._create_script_signature(
-            secret_exponent, kwargs["sign_value"], kwargs["signature_type"]
-        )
+        sig = self._create_sig(secret_exponent, **kwargs)
         signature_placeholder = kwargs.get("signature_placeholder",
                                            DEFAULT_PLACEHOLDER_SIGNATURE)
         script_asm = COMMIT_SCRIPTSIG.format(
@@ -566,7 +565,6 @@ class _AbsDepositScript(ScriptType):
 
     def solve_finalize_commit(self, **kwargs):
         hash160_lookup = kwargs.get("hash160_lookup")
-        sign_value = kwargs.get("sign_value")
         signature_type = kwargs.get("signature_type")
         existing_script = kwargs.get("existing_script")
 
@@ -581,14 +579,19 @@ class _AbsDepositScript(ScriptType):
             opcode, data, pc = tools.get_opcode(existing_script, 0)  # OP_0
             opcode, payer_sig, pc = tools.get_opcode(existing_script, pc)
 
-            # raise Exception(b2h(payer_sig))
-
             # verify signature type
             sig_r_s, actual_signature_type = parse_signature_blob(payer_sig)
             assert(signature_type == actual_signature_type)
 
             # verify payer signature
             public_pair = encoding.sec_to_public_pair(self.payer_sec)
+            sign_value = kwargs.get("sign_value")
+
+            public_pair = encoding.sec_to_public_pair(self.payer_sec)
+            sign_value = kwargs["signature_for_hash_type_f"](
+                signature_type, kwargs["script_to_hash"]
+            )
+
             if not ecdsa.verify(ecdsa.generator_secp256k1, public_pair,
                                 sign_value, sig_r_s):
                 raise InvalidPayerSignature("invalid r s values")
@@ -598,9 +601,7 @@ class _AbsDepositScript(ScriptType):
         # sign
         private_key = hash160_lookup.get(encoding.hash160(self.payee_sec))
         secret_exponent, public_pair, compressed = private_key
-        payee_sig = self._create_script_signature(
-            secret_exponent, sign_value, signature_type
-        )
+        payee_sig = self._create_sig(secret_exponent, **kwargs)
 
         script_asm = COMMIT_SCRIPTSIG.format(
             payer_sig=b2h(payer_sig), payee_sig=b2h(payee_sig)
@@ -665,7 +666,7 @@ def _parse_sequence_value(opcode, data, disassembled):
     return value
 
 
-def _get_word(script_bin, index):
+def get_word(script_bin, index):
     pc = 0
     i = 0
     while pc < len(script_bin) and i <= index:

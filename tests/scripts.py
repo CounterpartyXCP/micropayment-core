@@ -1,6 +1,7 @@
 import json
 import unittest
 from micropayment_core import scripts
+from micropayment_core import util
 
 
 FIXTURES = json.load(open("tests/fixtures.json"))
@@ -247,6 +248,15 @@ class TestScripts(unittest.TestCase):
         )
         self.assertTrue(rawtx, FIXTURES["sign"]["expire_recover"]["expected"])
 
+    def test_get_word(self):
+
+        deposit_script = util.h2b(FIXTURES["deposit"]["script_hex"])
+        opcode, data, asm = scripts.get_word(deposit_script, 20)
+        self.assertEqual((104, None, 'OP_ENDIF'), (opcode, data, asm))
+
+        def function():
+            scripts.get_word(deposit_script, 21)
+        self.assertRaises(ValueError, function)
 
 if __name__ == "__main__":
     unittest.main()
