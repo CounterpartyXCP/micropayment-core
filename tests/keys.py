@@ -15,6 +15,7 @@ PUBKEY = "0200802cc451fa39b0730bb5f37a3670e96e9e8e8ea479381f077ff4730fe2ed0b"
 
 WIF = "cPvLdJrWg1PeudwB2TyTwf34Fdgn93WtKeB1GbUbfyCoNyc65nkR"
 ADDRESS = "n4Hdm3aPxk8T816q8FGo5BghNLPNDAcX4v"
+P2SH_ADDRESS = "2N4VHMuovXcwCyoht68C1yBuVEDYVAoGNV2"
 NETCODE = "XTN"
 
 
@@ -56,12 +57,16 @@ class TestKeys(unittest.TestCase):
         netcode = keys.netcode_from_address(ADDRESS)
         self.assertEqual(netcode, NETCODE)
 
+    def test_netcode_from_p2sh_address(self):
+        netcode = keys.netcode_from_address(P2SH_ADDRESS)
+        self.assertEqual(netcode, NETCODE)
+
     def test_generate_wif(self):
         wif = keys.generate_wif()
         privkey = keys.wif_to_privkey(wif)
         self.assertEqual(len(privkey), 64)
 
-    def test_generate_wif(self):
+    def test_generate_privkey(self):
         privkey = keys.generate_privkey()
         self.assertEqual(len(privkey), 64)
 

@@ -15,6 +15,8 @@ from pycoin.ecdsa import verify as ecdsa_verify
 from pycoin.ecdsa import generator_secp256k1 as G
 from pycoin.key.BIP32Node import BIP32Node
 from micropayment_core import util
+from pycoin.encoding import a2b_hashed_base58
+from pycoin.key.validate import netcode_and_type_for_data
 import ecdsa
 
 
@@ -178,7 +180,9 @@ def netcode_from_wif(wif):
 
 def netcode_from_address(address):
     """ Returns netcode for given bitcoin address. """
-    return Key.from_text(address).netcode()
+    data = a2b_hashed_base58(address)
+    netcode, key_type, length = netcode_and_type_for_data(data)
+    return netcode
 
 
 def uncompress_pubkey(pubkey):

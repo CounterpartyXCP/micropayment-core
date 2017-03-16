@@ -19,7 +19,7 @@ from pycoin.ui import address_for_pay_to_script
 
 
 def gettxid(rawtx):
-    Tx.ALLOW_SEGWIT = False  # XXX so so bad!!
+    Tx.ALLOW_SEGWIT = False  # FIXME remove on next pycoin version
     return b2h_rev(Tx.from_hex(rawtx).hash())
 
 
@@ -40,7 +40,7 @@ def bytestoint(data):
 
 
 def load_tx(get_txs_func, rawtx):
-    Tx.ALLOW_SEGWIT = False
+    Tx.ALLOW_SEGWIT = False  # FIXME remove on next pycoin version
     tx = Tx.from_hex(rawtx)
 
     unspent_info = {}  # txid -> index
