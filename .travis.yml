@@ -11,7 +11,7 @@ install:
 script:
   - pep8 micropayment_core
   - coverage run --source="micropayment_core" setup.py test
-  - coverage report --fail-under=99
+  - coverage report --fail-under=100
 
 after_success:
   - coveralls
