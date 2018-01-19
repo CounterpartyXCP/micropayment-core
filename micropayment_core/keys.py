@@ -1,8 +1,3 @@
-# coding: utf-8
-# Copyright (c) 2016 Fabian Barkhau <fabian.barkhau@gmail.com>
-# License: MIT (see LICENSE file)
-
-
 import os
 import hashlib
 from ecdsa import SigningKey
